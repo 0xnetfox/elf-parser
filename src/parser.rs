@@ -60,13 +60,6 @@ impl ElfParser {
             .nth(0)
             .unwrap();
 
-        section_headers.iter().for_each(|sh| {
-            println!(
-                "{:?}",
-                ElfParser::get_sh_name(&string_tables[header_string_table_idx], sh.name).unwrap()
-            );
-        });
-
         Ok(ElfParser {
             headers,
             program_headers,

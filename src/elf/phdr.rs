@@ -2,9 +2,9 @@ use crate::bytes::{convert, Address};
 use crate::elf::ehdr::Elf64Hdr;
 use crate::parser::ParseError;
 
-pub const PF_EXEC: u8 = 0x1;
-pub const PF_WRITE: u8 = 0x2;
-pub const PF_READ: u8 = 0x4;
+pub const PF_EXEC: u32 = 0x1;
+pub const PF_WRITE: u32 = 0x2;
+pub const PF_READ: u32 = 0x4;
 
 #[repr(u32)]
 #[derive(Debug, PartialEq)]
