@@ -15,7 +15,7 @@ pub trait GenericBytes<const N: usize> {
 
 impl GenericBytes<2> for u16 {
     fn from_le_bytes(bytes: [u8; 2]) -> Self { u16::from_le_bytes(bytes) }
-    fn from_be_bytes(bytes: [u8; 2]) -> Self { u16::from_le_bytes(bytes) }
+    fn from_be_bytes(bytes: [u8; 2]) -> Self { u16::from_be_bytes(bytes) }
 }
 
 impl GenericBytes<4> for u32 {

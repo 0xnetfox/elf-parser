@@ -15,7 +15,7 @@ use crate::ElfHData::ElfData2Msb;
 const IDENT_SZ: usize = 16;
 
 #[repr(u8)]
-#[derive(Debug, PartialEq, Eq, Default)]
+#[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
 enum ElfHClass {
     /// Identifies the ELF class as invalid
     #[default]
@@ -27,7 +27,7 @@ enum ElfHClass {
 }
 
 #[repr(u8)]
-#[derive(Debug, PartialEq, Eq, Default)]
+#[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
 enum ElfHData {
     /// Identifies the ELF data as 2's complement, with the least significant byte
     /// occupying the lowest address.
@@ -39,7 +39,7 @@ enum ElfHData {
 }
 
 #[repr(u8)]
-#[derive(Debug, PartialEq, Eq, Default)]
+#[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
 enum ElfHVersion {
     /// Identifies the ELF version as invalid
     #[default]
@@ -61,7 +61,7 @@ impl TryFrom<u8> for ElfHVersion {
 }
 
 #[repr(C)]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone)]
 struct Elf64Ident {
     /// Holds a magic number that identifies the file as an ELF file.
     /// The magic number is: 0x7f E L F
@@ -119,7 +119,7 @@ struct Elf64Hdr {
     /// Indicates the architecture needed for the file
     machine: u16,
     /// Indicates the ELF header version for this file.
-    version: ElfHVersion,
+    version: u32,
     /// Specifies the virtual address to which the system will handle control.
     /// If there's no entry point for this file, this field holds 0.
     entry: Address,
@@ -152,6 +152,7 @@ struct Elf64Hdr {
     sh_str_ndx: u16,
 }
 
+#[warn(dead_code)]
 struct Elf64SHdr {
     name: u32,
     s_type: u32,
@@ -184,9 +185,9 @@ impl ElfParser {
 
     pub fn convert<T: GenericBytes<N>, const N: usize>(&self, bytes: [u8; N]) -> T {
         if self.endianness == ElfData2Msb {
-            T::from_le_bytes(bytes)
-        } else {
             T::from_be_bytes(bytes)
+        } else {
+            T::from_le_bytes(bytes)
         }
     }
 
@@ -208,6 +209,7 @@ impl ElfParser {
 
     pub fn parse_headers(&mut self, data: Vec<u8>) -> Result<Elf64Hdr, ParseError> {
         let ident = Self::parse_ident(&data).unwrap();
+        self.endianness = ident.data;
 
         Ok(Elf64Hdr {
             ident,
@@ -215,17 +217,17 @@ impl ElfParser {
                 .try_into()
                 .unwrap(),
             machine: self.convert(data[18..=19].try_into().unwrap()),
-            version: data[20].try_into().unwrap(),
-            entry: self.convert(data[21..=28].try_into().unwrap()),
-            ph_off: self.convert(data[29..=36].try_into().unwrap()),
-            sh_off: self.convert(data[37..=44].try_into().unwrap()),
-            flags: self.convert(data[45..=48].try_into().unwrap()),
-            eh_size: self.convert(data[49..=50].try_into().unwrap()),
-            ph_ent_size: self.convert(data[51..=52].try_into().unwrap()),
-            ph_num: self.convert(data[53..=54].try_into().unwrap()),
-            sh_ent_size: self.convert(data[55..=56].try_into().unwrap()),
-            sh_num: self.convert(data[57..=58].try_into().unwrap()),
-            sh_str_ndx: self.convert(data[59..=60].try_into().unwrap())
+            version: self.convert::<u32, 4>(data[20..=23].try_into().unwrap()),
+            entry: self.convert(data[24..=31].try_into().unwrap()),
+            ph_off: self.convert(data[32..=39].try_into().unwrap()),
+            sh_off: self.convert(data[40..=47].try_into().unwrap()),
+            flags: self.convert(data[48..=51].try_into().unwrap()),
+            eh_size: self.convert(data[52..=53].try_into().unwrap()),
+            ph_ent_size: self.convert(data[54..=55].try_into().unwrap()),
+            ph_num: self.convert(data[56..=57].try_into().unwrap()),
+            sh_ent_size: self.convert(data[58..=59].try_into().unwrap()),
+            sh_num: self.convert(data[60..=61].try_into().unwrap()),
+            sh_str_ndx: self.convert(data[62..=63].try_into().unwrap())
         })
     }
 
