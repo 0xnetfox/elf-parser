@@ -1,5 +1,6 @@
 use crate::bytes::str_from_u8;
 use crate::elf::ehdr::Elf64Hdr;
+use crate::elf::phdr::Elf64PHdr;
 use crate::elf::shdr::{Elf64SHdr, StringTable, StringTableType, SHT_STRTAB};
 
 /// Based of:
@@ -12,6 +13,7 @@ use crate::elf::shdr::{Elf64SHdr, StringTable, StringTableType, SHT_STRTAB};
 #[derive(Debug)]
 pub struct ElfParser {
     pub headers: Elf64Hdr,
+    pub program_headers: Vec<Elf64PHdr>,
     pub section_headers: Vec<Elf64SHdr>,
     pub header_string_table_idx: usize,
     pub string_tables: Vec<StringTable>,
@@ -46,6 +48,7 @@ impl ElfParser {
     pub fn parse(data: Vec<u8>) -> Result<Self, ParseError> {
         let headers = *Elf64Hdr::parse(&data)?.validate();
         let section_headers = Elf64SHdr::parse(&data, &headers)?;
+        let program_headers = Elf64PHdr::parse(&data, &headers)?;
 
         let string_tables =
             ElfParser::parse_string_tables(&data, &headers, &section_headers).unwrap();
@@ -66,6 +69,7 @@ impl ElfParser {
 
         Ok(ElfParser {
             headers,
+            program_headers,
             section_headers,
             string_tables,
             header_string_table_idx,
