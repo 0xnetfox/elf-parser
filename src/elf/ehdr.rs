@@ -1,4 +1,5 @@
-use crate::{Address, convert, ParseError};
+use crate::bytes::{Address, convert};
+use crate::parser::ParseError;
 
 /// Size of the first batch of information on the file, which contains
 /// the data needed to parse the rest of the file

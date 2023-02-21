@@ -1,9 +1,6 @@
-mod bytes;
-mod elf;
-
+use crate::bytes::str_from_u8;
+use crate::elf::ehdr::Elf64Hdr;
 use crate::elf::shdr::{Elf64SHdr, SHT_STRTAB, StringTable, StringTableType};
-use crate::bytes::{Address, convert, str_from_u8};
-use crate::elf::ehdr::{Elf64Hdr, ElfHData};
 
 /// Based of:
 /// [System V Application Binary Interface - DRAFT - 10 June 2013](http://www.sco.com/developers/gabi/latest/contents.html)
@@ -11,14 +8,13 @@ use crate::elf::ehdr::{Elf64Hdr, ElfHData};
 /// Implementation Constraints List:
 /// + This implementation only handles RISC-V machines
 /// + This implementation only handles 64-bit class
-
 #[allow(dead_code)]
 #[derive(Debug)]
-struct ElfParser {
-    headers: Elf64Hdr,
-    section_headers: Vec<Elf64SHdr>,
-    header_string_table_idx: usize,
-    string_tables: Vec<StringTable>
+pub struct ElfParser {
+    pub headers: Elf64Hdr,
+    pub section_headers: Vec<Elf64SHdr>,
+    pub header_string_table_idx: usize,
+    pub string_tables: Vec<StringTable>
 }
 
 #[derive(Debug)]
@@ -27,7 +23,7 @@ pub enum ParseError {
 }
 
 impl ElfParser {
-    pub fn parse_string_tables(data: &[u8], headers: &Elf64Hdr, section_headers: &[Elf64SHdr]) -> Result<Vec<StringTable>, ParseError> {
+    pub fn parse_string_tables(data: &[u8], headers: &Elf64Hdr, section_headers: &Vec<Elf64SHdr>) -> Result<Vec<StringTable>, ParseError> {
         Ok(section_headers
             .iter()
             .enumerate()
@@ -65,9 +61,4 @@ impl ElfParser {
             header_string_table_idx,
         })
     }
-}
-
-fn main() {
-    let contents = std::fs::read("./out/rv64i-test").unwrap();
-    let _ = ElfParser::parse(contents).unwrap();
 }

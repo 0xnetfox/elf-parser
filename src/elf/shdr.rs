@@ -1,4 +1,6 @@
-use crate::{Address, convert, Elf64Hdr, ParseError};
+use crate::bytes::{Address, convert};
+use crate::elf::ehdr::Elf64Hdr;
+use crate::parser::ParseError;
 
 /// Indicates the lower bound of the range of reserved indices
 pub const SHN_LORESERVE: u16 = 0xff00;

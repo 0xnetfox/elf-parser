@@ -1,4 +1,4 @@
-use crate::ElfHData;
+use crate::elf::ehdr::ElfHData;
 
 #[repr(C)]
 #[derive(Default, Copy, Clone)]
