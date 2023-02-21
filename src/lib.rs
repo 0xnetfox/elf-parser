@@ -1,3 +1,3 @@
-pub mod elf;
 pub mod bytes;
+pub mod elf;
 pub mod parser;

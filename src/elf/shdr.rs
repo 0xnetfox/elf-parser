@@ -1,4 +1,4 @@
-use crate::bytes::{Address, convert};
+use crate::bytes::{convert, Address};
 use crate::elf::ehdr::Elf64Hdr;
 use crate::parser::ParseError;
 
@@ -6,7 +6,7 @@ use crate::parser::ParseError;
 pub const SHN_LORESERVE: u16 = 0xff00;
 
 /// Indicates sections that store string tables
-pub const SHT_STRTAB: u32    = 0x3;
+pub const SHT_STRTAB: u32 = 0x3;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum StringTableType {
@@ -22,13 +22,13 @@ pub enum StringTableType {
 #[derive(Debug, Clone)]
 pub struct StringTable {
     /// Offset to the first byte of the table
-    pub offset:     u64,
+    pub offset: u64,
     /// Size of the table
-    pub size:       u64,
+    pub size: u64,
     /// Vector of bytes that conform the table
-    pub table:      Vec<u8>,
+    pub table: Vec<u8>,
     /// Type of string table
-    pub sh_type:    StringTableType
+    pub sh_type: StringTableType,
 }
 
 #[allow(dead_code)]
@@ -69,7 +69,11 @@ impl Elf64SHdr {
         self.addr_align != 0 && self.addr_align != 1
     }
 
-    pub fn parse_str_table(data: &[u8], section_header: &Elf64SHdr, is_header_table: bool) -> Result<StringTable, ParseError> {
+    pub fn parse_str_table(
+        data: &[u8],
+        section_header: &Elf64SHdr,
+        is_header_table: bool,
+    ) -> Result<StringTable, ParseError> {
         let off = section_header.offset as usize;
         let siz = section_header.size as usize;
 
@@ -81,7 +85,11 @@ impl Elf64SHdr {
         assert_eq!(*table.first().unwrap(), 0u8);
         assert_eq!(*table.last().unwrap(), 0u8);
 
-        let sh_type = if is_header_table { StringTableType::ShStrTab } else { StringTableType::StrTab };
+        let sh_type = if is_header_table {
+            StringTableType::ShStrTab
+        } else {
+            StringTableType::StrTab
+        };
 
         Ok(StringTable {
             offset: section_header.offset,
@@ -97,13 +105,15 @@ impl Elf64SHdr {
         let siz = headers.sh_ent_size as usize;
 
         if nth >= SHN_LORESERVE as usize {
-            unimplemented!("If the number of entries in the section header table is
+            unimplemented!(
+                "If the number of entries in the section header table is
               larger than or equal to SHN_LORESERVE (0xff00), e_shnum
               holds the value zero and the real number of entries in the
               section header table is held in the sh_size member of the
               initial entry in section header table.  Otherwise, the
               sh_size member of the initial entry in the section header
-              table holds the value zero.");
+              table holds the value zero."
+            );
         }
 
         let headers: Vec<Elf64SHdr> = data[off..]
@@ -119,8 +129,9 @@ impl Elf64SHdr {
                 link: convert(sh[40..=43].try_into().unwrap(), headers.ident.data),
                 info: convert(sh[44..=47].try_into().unwrap(), headers.ident.data),
                 addr_align: convert(sh[48..=55].try_into().unwrap(), headers.ident.data),
-                ent_size: convert(sh[56..=63].try_into().unwrap(), headers.ident.data)
-            }).collect();
+                ent_size: convert(sh[56..=63].try_into().unwrap(), headers.ident.data),
+            })
+            .collect();
 
         Ok(headers)
     }

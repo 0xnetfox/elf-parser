@@ -1,4 +1,4 @@
-use crate::bytes::{Address, convert};
+use crate::bytes::{convert, Address};
 use crate::parser::ParseError;
 
 /// Size of the first batch of information on the file, which contains
@@ -43,7 +43,7 @@ impl TryFrom<u8> for ElfHVersion {
         match value {
             0 => Ok(ElfHVersion::ElfEvNone),
             1 => Ok(ElfHVersion::ElfEvCurr),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -72,7 +72,7 @@ pub struct Elf64Ident {
     /// hold a 0.
     pub abi_version: u8,
     /// Padding to keep the struct size as required by the specification
-    _pad: [u8; IDENT_SZ - 9]
+    _pad: [u8; IDENT_SZ - 9],
 }
 
 #[repr(u16)]
@@ -90,7 +90,7 @@ impl TryFrom<u16> for ElfHType {
     fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
             2 => Ok(ElfHType::Executable),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -151,10 +151,8 @@ impl Elf64Hdr {
 
     pub fn parse_ident(data: &[u8]) -> Result<Elf64Ident, ParseError> {
         let mut ident = [0u8; IDENT_SZ];
-        ident.copy_from_slice(&(data
-            .get(..IDENT_SZ)
-            .ok_or(ParseError::InvalidLength)?)[..IDENT_SZ]
-        );
+        ident
+            .copy_from_slice(&(data.get(..IDENT_SZ).ok_or(ParseError::InvalidLength)?)[..IDENT_SZ]);
 
         Ok(unsafe { std::mem::transmute::<[u8; IDENT_SZ], Elf64Ident>(ident) })
     }
@@ -178,7 +176,7 @@ impl Elf64Hdr {
             ph_num: convert(data[56..=57].try_into().unwrap(), ident.data),
             sh_ent_size: convert(data[58..=59].try_into().unwrap(), ident.data),
             sh_num: convert(data[60..=61].try_into().unwrap(), ident.data),
-            sh_str_ndx: convert(data[62..=63].try_into().unwrap(), ident.data)
+            sh_str_ndx: convert(data[62..=63].try_into().unwrap(), ident.data),
         })
     }
 }

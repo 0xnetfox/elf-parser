@@ -24,18 +24,30 @@ pub trait GenericBytes<const N: usize> {
 }
 
 impl GenericBytes<2> for u16 {
-    fn from_le_bytes(bytes: [u8; 2]) -> Self { u16::from_le_bytes(bytes) }
-    fn from_be_bytes(bytes: [u8; 2]) -> Self { u16::from_be_bytes(bytes) }
+    fn from_le_bytes(bytes: [u8; 2]) -> Self {
+        u16::from_le_bytes(bytes)
+    }
+    fn from_be_bytes(bytes: [u8; 2]) -> Self {
+        u16::from_be_bytes(bytes)
+    }
 }
 
 impl GenericBytes<4> for u32 {
-    fn from_le_bytes(bytes: [u8; 4]) -> Self { u32::from_le_bytes(bytes) }
-    fn from_be_bytes(bytes: [u8; 4]) -> Self { u32::from_be_bytes(bytes) }
+    fn from_le_bytes(bytes: [u8; 4]) -> Self {
+        u32::from_le_bytes(bytes)
+    }
+    fn from_be_bytes(bytes: [u8; 4]) -> Self {
+        u32::from_be_bytes(bytes)
+    }
 }
 
 impl GenericBytes<8> for u64 {
-    fn from_le_bytes(bytes: [u8; 8]) -> Self { u64::from_le_bytes(bytes) }
-    fn from_be_bytes(bytes: [u8; 8]) -> Self { u64::from_be_bytes(bytes) }
+    fn from_le_bytes(bytes: [u8; 8]) -> Self {
+        u64::from_le_bytes(bytes)
+    }
+    fn from_be_bytes(bytes: [u8; 8]) -> Self {
+        u64::from_be_bytes(bytes)
+    }
 }
 
 impl GenericBytes<8> for Address {
@@ -49,10 +61,7 @@ impl GenericBytes<8> for Address {
 }
 
 pub fn str_from_u8(src: &[u8]) -> Result<String, ()> {
-    let nul_range_end = src.iter()
-        .position(|&c| c == b'\0')
-        .unwrap_or(src.len());
+    let nul_range_end = src.iter().position(|&c| c == b'\0').unwrap_or(src.len());
 
     Ok(String::from_utf8(src[0..nul_range_end].to_vec()).unwrap())
 }
-
