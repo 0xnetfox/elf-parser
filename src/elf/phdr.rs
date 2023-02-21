@@ -1,5 +1,6 @@
 use crate::bytes::{convert, Address};
 use crate::elf::ehdr::Elf64Hdr;
+use crate::elf::phdr::PTypeData::Ignorable;
 use crate::parser::ParseError;
 
 pub const PF_EXEC: u32 = 0x1;
@@ -27,13 +28,68 @@ pub enum PType {
     PtHiProc = 11,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
+pub enum PTypeData {
+    PtLoadData(Vec<u8>),
+    PtDynamicData(Vec<ELF64Dyn>),
+    Ignorable,
+}
+
+impl PTypeData {
+    pub fn parse_section(
+        p_type: &PType,
+        headers: &Elf64Hdr,
+        filesz: u64,
+        memsz: u64,
+        offset: u64,
+        data: &[u8],
+    ) -> Result<Self, ParseError> {
+        match p_type {
+            PType::PtLoad => {
+                if filesz > memsz {
+                    panic!();
+                }
+
+                // initialize the data vector with len `memsz`, as that's the total length that
+                // it should occupy on the process memory
+                let mut bytes = vec![0u8; memsz as usize];
+
+                let section = &data[offset as usize..(offset + filesz) as usize];
+                bytes[0..filesz as usize].copy_from_slice(section);
+
+                Ok(PTypeData::PtLoadData(bytes))
+            }
+            PType::PtDynamic => {
+                let section = &data[offset as usize..(offset + filesz) as usize];
+
+                Ok(PTypeData::PtDynamicData(
+                    section
+                        .chunks(16)
+                        .map(|s| {
+                            let d_tag: i64 =
+                                convert(s[0..=7].try_into().unwrap(), headers.ident.data);
+                            let d_un = convert(s[8..=15].try_into().unwrap(), headers.ident.data);
+
+                            ELF64Dyn {
+                                d_tag,
+                                d_un: ELF64Dyn::d_un(d_tag, d_un),
+                            }
+                        })
+                        .collect(),
+                ))
+            }
+            _ => Ok(Ignorable),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub enum DynValue {
     DVal(u64),
     DPtr(Address),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ELF64Dyn {
     pub d_tag: i64,
     pub d_un: DynValue,
@@ -101,7 +157,7 @@ pub struct Elf64PHdr {
     /// be a positive, integral power of 2, and p_vaddr should equal p_offset modulo p_align.
     pub align: u64,
     /// The section data that should be loaded into the process
-    pub section: Vec<u8>,
+    pub section: PTypeData,
 }
 
 impl Elf64PHdr {
@@ -120,41 +176,9 @@ impl Elf64PHdr {
                 let filesz = convert::<u64, 8>(sh[32..=39].try_into().unwrap(), headers.ident.data);
                 let memsz = convert::<u64, 8>(sh[40..=47].try_into().unwrap(), headers.ident.data);
                 let offset = convert::<u64, 8>(sh[8..=15].try_into().unwrap(), headers.ident.data);
-
-                // initialize the data vector with len `memsz`, as that's the total length that
-                // it should occupy on the process memory
-                let mut bytes = vec![0u8; memsz as usize];
-                match p_type {
-                    PType::PtLoad => {
-                        if filesz > memsz {
-                            panic!();
-                        }
-
-                        let section = &data[offset as usize..(offset + filesz) as usize];
-                        bytes[0..filesz as usize].copy_from_slice(section);
-                    }
-                    PType::PtDynamic => {
-                        let section = &data[offset as usize..(offset + filesz) as usize];
-
-                        let dyns: Vec<ELF64Dyn> = section
-                            .chunks(8 + 8)
-                            .map(|s| {
-                                let d_tag: i64 =
-                                    convert(s[0..=7].try_into().unwrap(), headers.ident.data);
-                                let d_un =
-                                    convert(s[8..=15].try_into().unwrap(), headers.ident.data);
-
-                                ELF64Dyn {
-                                    d_tag,
-                                    d_un: ELF64Dyn::d_un(d_tag, d_un),
-                                }
-                            })
-                            .collect();
-
-                        println!("{:#?}", dyns);
-                    }
-                    _ => (),
-                }
+                let section =
+                    PTypeData::parse_section(&p_type, headers, filesz, memsz, offset, data)
+                        .unwrap();
 
                 Elf64PHdr {
                     p_type,
@@ -165,7 +189,7 @@ impl Elf64PHdr {
                     filesz,
                     memsz,
                     align: convert(sh[48..=55].try_into().unwrap(), headers.ident.data),
-                    section: bytes,
+                    section,
                 }
             })
             .collect();
