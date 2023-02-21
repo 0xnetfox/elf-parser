@@ -6,6 +6,10 @@ pub const PF_EXEC: u32 = 0x1;
 pub const PF_WRITE: u32 = 0x2;
 pub const PF_READ: u32 = 0x4;
 
+pub const DT_ENCODING: i64 = 32;
+pub const DT_HIOS: i64 = 0x6ffff000;
+pub const DT_LOPROC: i64 = 0x70000000;
+
 #[repr(u32)]
 #[derive(Debug, PartialEq)]
 pub enum PType {
@@ -21,6 +25,38 @@ pub enum PType {
     PtHios = 9,
     PtLoProc = 10,
     PtHiProc = 11,
+}
+
+#[derive(Debug)]
+pub enum DynValue {
+    DVal(u64),
+    DPtr(Address),
+}
+
+#[derive(Debug)]
+pub struct ELF64Dyn {
+    pub d_tag: i64,
+    pub d_un: DynValue,
+}
+
+impl ELF64Dyn {
+    pub fn d_un(d_tag: i64, d_un: u64) -> DynValue {
+        let is_ptr = d_tag % 2 == 0;
+
+        match is_ptr {
+            true => DynValue::DPtr(Address(d_un)),
+            false => {
+                if d_tag < DT_ENCODING || (d_tag > DT_HIOS && d_tag < DT_LOPROC) {
+                    // TODO for now we don't care about this special case, but as the spec
+                    // says `d_tags` that fall into these values are not ruled by the same
+                    // rules as the other ones.
+                    return DynValue::DVal(d_un);
+                }
+
+                DynValue::DVal(d_un)
+            }
+        }
+    }
 }
 
 impl TryFrom<u32> for PType {
@@ -88,13 +124,36 @@ impl Elf64PHdr {
                 // initialize the data vector with len `memsz`, as that's the total length that
                 // it should occupy on the process memory
                 let mut bytes = vec![0u8; memsz as usize];
-                if p_type == PType::PtLoad {
-                    if filesz > memsz {
-                        panic!();
-                    }
+                match p_type {
+                    PType::PtLoad => {
+                        if filesz > memsz {
+                            panic!();
+                        }
 
-                    let section = &data[offset as usize..(offset + filesz) as usize];
-                    bytes[0..filesz as usize].copy_from_slice(section);
+                        let section = &data[offset as usize..(offset + filesz) as usize];
+                        bytes[0..filesz as usize].copy_from_slice(section);
+                    }
+                    PType::PtDynamic => {
+                        let section = &data[offset as usize..(offset + filesz) as usize];
+
+                        let dyns: Vec<ELF64Dyn> = section
+                            .chunks(8 + 8)
+                            .map(|s| {
+                                let d_tag: i64 =
+                                    convert(s[0..=7].try_into().unwrap(), headers.ident.data);
+                                let d_un =
+                                    convert(s[8..=15].try_into().unwrap(), headers.ident.data);
+
+                                ELF64Dyn {
+                                    d_tag,
+                                    d_un: ELF64Dyn::d_un(d_tag, d_un),
+                                }
+                            })
+                            .collect();
+
+                        println!("{:#?}", dyns);
+                    }
+                    _ => (),
                 }
 
                 Elf64PHdr {
