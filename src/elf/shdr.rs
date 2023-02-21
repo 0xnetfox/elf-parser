@@ -17,7 +17,7 @@ pub struct Elf64SHdr {
     pub addr: Address,
     /// The offset from the start of the file to the first byte in this section
     pub offset: u64,
-    /// Header section size
+    /// Section size
     pub size: u64,
     /// Index link to the section header table, whose interpretation is dependant on `s_type`
     pub link: u32,

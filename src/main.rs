@@ -15,7 +15,8 @@ use crate::elf::ehdr::{Elf64Hdr, ElfHData, IDENT_SZ};
 #[derive(Debug, Default)]
 struct ElfParser {
     headers: Elf64Hdr,
-    section_headers: Vec<Elf64SHdr>
+    section_headers: Vec<Elf64SHdr>,
+    section_header_string_table: Vec<u8>,
 }
 
 #[derive(Debug)]
@@ -28,9 +29,28 @@ impl ElfParser {
         ElfParser::default()
     }
 
+    pub fn parse_sh_str_tab(data: Vec<u8>, sh_str_tab_hdr: Elf64SHdr) -> Result<Vec<u8>, ParseError> {
+        let off = sh_str_tab_hdr.offset as usize;
+        let siz = sh_str_tab_hdr.size as usize;
+        let table: Vec<u8> = data[off..off + siz]
+            .try_into()
+            .unwrap();
+
+        assert_eq!(table.len(), siz);
+        assert_eq!(*table.first().unwrap(), 0u8);
+        assert_eq!(*table.last().unwrap(), 0u8);
+
+        Ok(table)
+    }
+
     pub fn parse(&mut self, data: Vec<u8>) -> Result<&Self, ParseError> {
         self.headers = *Elf64Hdr::parse(&data)?.validate();
         self.section_headers = Elf64SHdr::parse(&data, &self.headers)?;
+
+        self.section_header_string_table = ElfParser::parse_sh_str_tab(
+            data,
+            self.section_headers[self.headers.sh_str_ndx as usize]
+        )?;
 
         Ok(self)
     }
