@@ -50,6 +50,15 @@ impl GenericBytes<8> for u64 {
     }
 }
 
+impl GenericBytes<8> for i64 {
+    fn from_le_bytes(bytes: [u8; 8]) -> Self {
+        i64::from_le_bytes(bytes)
+    }
+    fn from_be_bytes(bytes: [u8; 8]) -> Self {
+        i64::from_be_bytes(bytes)
+    }
+}
+
 impl GenericBytes<8> for Address {
     fn from_le_bytes(bytes: [u8; 8]) -> Self {
         Address(u64::from_le_bytes(bytes))
