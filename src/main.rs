@@ -12,7 +12,8 @@ use crate::elf::ehdr::{Elf64Hdr, ElfHData};
 /// + This implementation only handles RISC-V machines
 /// + This implementation only handles 64-bit class
 
-#[derive(Debug, Default)]
+#[allow(dead_code)]
+#[derive(Debug)]
 struct ElfParser {
     headers: Elf64Hdr,
     section_headers: Vec<Elf64SHdr>,
@@ -26,16 +27,12 @@ pub enum ParseError {
 }
 
 impl ElfParser {
-    pub fn new() -> Self {
-        ElfParser::default()
-    }
-
-    pub fn parse_string_tables(&self, data: &[u8]) -> Result<Vec<StringTable>, ParseError> {
-        Ok(self.section_headers
+    pub fn parse_string_tables(data: &[u8], headers: &Elf64Hdr, section_headers: &[Elf64SHdr]) -> Result<Vec<StringTable>, ParseError> {
+        Ok(section_headers
             .iter()
             .enumerate()
             .filter(|(_, sh)| sh.s_type == SHT_STRTAB)
-            .map(|(idx, str_sh)| Elf64SHdr::parse_str_table(&data, str_sh, idx == self.headers.sh_str_ndx as usize).unwrap())
+            .map(|(idx, str_sh)| Elf64SHdr::parse_str_table(&data, str_sh, idx == headers.sh_str_ndx as usize).unwrap())
             .collect())
     }
 
@@ -43,29 +40,34 @@ impl ElfParser {
         str_from_u8(&str_table.table[idx as usize..])
     }
 
-    pub fn parse(&mut self, data: Vec<u8>) -> Result<&Self, ParseError> {
-        self.headers = *Elf64Hdr::parse(&data)?.validate();
-        self.section_headers = Elf64SHdr::parse(&data, &self.headers)?;
-        self.string_tables = self.parse_string_tables(&data).unwrap();
-        self.header_string_table_idx =
-            self.string_tables.iter()
+    pub fn parse(data: Vec<u8>) -> Result<Self, ParseError> {
+        let headers = *Elf64Hdr::parse(&data)?.validate();
+        let section_headers = Elf64SHdr::parse(&data, &headers)?;
+
+        let string_tables = ElfParser::parse_string_tables(&data, &headers, &section_headers).unwrap();
+        let header_string_table_idx =
+            string_tables.iter()
                 .enumerate()
                 .filter(|(_, sh)| sh.sh_type == StringTableType::ShStrTab)
                 .map(|(idx, _)| idx)
                 .nth(0)
                 .unwrap();
 
-        self.section_headers.iter()
+        section_headers.iter()
             .for_each(|sh| {
-                println!("{:?}", ElfParser::get_sh_name(&self.string_tables[self.header_string_table_idx], sh.name).unwrap());
+                println!("{:?}", ElfParser::get_sh_name(&string_tables[header_string_table_idx], sh.name).unwrap());
             });
 
-        Ok(self)
+        Ok(ElfParser {
+            headers,
+            section_headers,
+            string_tables,
+            header_string_table_idx,
+        })
     }
 }
 
 fn main() {
     let contents = std::fs::read("./out/rv64i-test").unwrap();
-    let mut elf = ElfParser::new();
-    elf.parse(contents).unwrap();
+    let _ = ElfParser::parse(contents).unwrap();
 }

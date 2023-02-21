@@ -6,7 +6,7 @@ pub const SHN_LORESERVE: u16 = 0xff00;
 /// Indicates sections that store string tables
 pub const SHT_STRTAB: u32    = 0x3;
 
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum StringTableType {
     /// String Table
     StrTab,
@@ -14,13 +14,10 @@ pub enum StringTableType {
     ShStrTab,
     /// Dynamic Symbols String Table
     /// TODO: doesn't parse DynStr sections yet
-    #[allow(dead_code)]
-    DynSym,
-    #[default]
-    Other,
+    _DynSym,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct StringTable {
     /// Offset to the first byte of the table
     pub offset:     u64,

@@ -5,11 +5,10 @@ use crate::{Address, convert, ParseError};
 pub const IDENT_SZ: usize = 16;
 
 #[repr(u8)]
-#[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ElfHClass {
     /// Identifies the ELF class as invalid
-    #[default]
-    ElfClassIn = 0,
+    _ElfClassIn = 0,
     /// Identifies the ELF class as 32-bit
     _ElfClass32 = 1,
     /// Identifies the ELF class as 64-bit
@@ -17,11 +16,10 @@ pub enum ElfHClass {
 }
 
 #[repr(u8)]
-#[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ElfHData {
     /// Identifies the ELF data as 2's complement, with the least significant byte
     /// occupying the lowest address.
-    #[default]
     ElfData2Lsb = 1,
     /// Identifies the ELF data as 2's complement, with the most significant byte
     /// occupying the lowest address.
@@ -29,10 +27,9 @@ pub enum ElfHData {
 }
 
 #[repr(u8)]
-#[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ElfHVersion {
     /// Identifies the ELF version as invalid
-    #[default]
     ElfEvNone = 0,
     /// Identifies the ELF version as current
     ElfEvCurr = 1,
@@ -51,7 +48,7 @@ impl TryFrom<u8> for ElfHVersion {
 }
 
 #[repr(C)]
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Elf64Ident {
     /// Holds a magic number that identifies the file as an ELF file.
     /// The magic number is: 0x7f E L F
@@ -78,11 +75,10 @@ pub struct Elf64Ident {
 }
 
 #[repr(u16)]
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum ElfHType {
     /// No file type
-    #[default]
-    None = 0,
+    _None = 0,
     /// An executable file
     Executable = 2,
 }
@@ -100,7 +96,7 @@ impl TryFrom<u16> for ElfHType {
 
 /// ELF headers specification
 #[repr(C)]
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Elf64Hdr {
     /// Identifies how to interpret the file
     pub ident: Elf64Ident,
