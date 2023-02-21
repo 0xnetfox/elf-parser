@@ -1,5 +1,5 @@
 #[repr(C)]
-#[derive(Default)]
+#[derive(Default, Copy, Clone)]
 pub struct Address(u64);
 
 impl std::fmt::Debug for Address {

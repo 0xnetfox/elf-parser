@@ -12,7 +12,12 @@ use crate::ElfHData::ElfData2Msb;
 /// + This implementation only handles RISC-V machines
 /// + This implementation only handles 64-bit class
 
+/// Size of the first batch of information on the file, which contains
+/// the data needed to parse the rest of the file
 const IDENT_SZ: usize = 16;
+
+/// Indicates the lower bound of the range of reserved indices
+const SHN_LORESERVE: u16 = 0xff00;
 
 #[repr(u8)]
 #[derive(Debug, PartialEq, Eq, Default, Copy, Clone)]
@@ -152,24 +157,50 @@ struct Elf64Hdr {
     sh_str_ndx: u16,
 }
 
-#[warn(dead_code)]
+#[allow(dead_code)]
+#[derive(Debug, Copy, Clone)]
 struct Elf64SHdr {
+    /// Name of the header section
     name: u32,
+    /// Type of the header section
     s_type: u32,
+    /// 1-bit flags that describe misc attributes
     flags: u64,
-    addr: u64,
+    /// if the section is loaded into the process memory, indicates at which
+    /// address its first bit should reside, otherwise it contains 0
+    addr: Address,
+    /// The offset from the start of the file to the first byte in this section
     offset: u64,
+    /// Header section size
     size: u64,
+    /// Index link to the section header table, whose interpretation is dependant on `s_type`
     link: u32,
+    /// Extra information, whose interpretation is dependant on `s_type`
     info: u32,
+    /// Alignment constraints as required by some sections, otherwise contains 0 or 1 indicating
+    /// no constraints
     addr_align: u64,
+    /// Holds the size in bytes of the section's table, or 0 if there is no table
     ent_size: u64,
+}
+
+impl Elf64SHdr {
+    #[allow(dead_code)]
+    fn has_table(&self) -> bool {
+        self.ent_size == 0
+    }
+
+    #[allow(dead_code)]
+    fn has_align_constraints(&self) -> bool {
+        self.addr_align == 0 || self.addr_align == 1
+    }
 }
 
 #[derive(Debug, Default)]
 struct ElfParser {
     endianness: ElfHData,
     headers: Elf64Hdr,
+    section_headers: Vec<Elf64SHdr>
 }
 
 #[derive(Debug)]
@@ -207,7 +238,7 @@ impl ElfParser {
         Ok(ident)
     }
 
-    pub fn parse_headers(&mut self, data: Vec<u8>) -> Result<Elf64Hdr, ParseError> {
+    pub fn parse_headers(&mut self, data: &Vec<u8>) -> Result<Elf64Hdr, ParseError> {
         let ident = Self::parse_ident(&data).unwrap();
         self.endianness = ident.data;
 
@@ -217,7 +248,7 @@ impl ElfParser {
                 .try_into()
                 .unwrap(),
             machine: self.convert(data[18..=19].try_into().unwrap()),
-            version: self.convert::<u32, 4>(data[20..=23].try_into().unwrap()),
+            version: self.convert(data[20..=23].try_into().unwrap()),
             entry: self.convert(data[24..=31].try_into().unwrap()),
             ph_off: self.convert(data[32..=39].try_into().unwrap()),
             sh_off: self.convert(data[40..=47].try_into().unwrap()),
@@ -231,8 +262,44 @@ impl ElfParser {
         })
     }
 
+    pub fn parse_header_sections(&mut self, data: &Vec<u8>) -> Result<Vec<Elf64SHdr>, ParseError> {
+        let nth = self.headers.sh_num as usize;
+        let off = self.headers.sh_off as usize;
+        let siz = self.headers.sh_ent_size as usize;
+
+        if nth >= SHN_LORESERVE as usize {
+            unimplemented!("If the number of entries in the section header table is
+              larger than or equal to SHN_LORESERVE (0xff00), e_shnum
+              holds the value zero and the real number of entries in the
+              section header table is held in the sh_size member of the
+              initial entry in section header table.  Otherwise, the
+              sh_size member of the initial entry in the section header
+              table holds the value zero.");
+        }
+
+        let headers: Vec<Elf64SHdr> = data[off..]
+            .chunks(siz)
+            .take(nth)
+            .map(|sh| Elf64SHdr {
+                name: self.convert(sh[0..=3].try_into().unwrap()),
+                s_type: self.convert(sh[4..=7].try_into().unwrap()),
+                flags: self.convert(sh[8..=15].try_into().unwrap()),
+                addr: self.convert(sh[16..=23].try_into().unwrap()),
+                offset: self.convert(sh[24..=31].try_into().unwrap()),
+                size: self.convert(sh[32..=39].try_into().unwrap()),
+                link: self.convert(sh[40..=43].try_into().unwrap()),
+                info: self.convert(sh[44..=47].try_into().unwrap()),
+                addr_align: self.convert(sh[48..=55].try_into().unwrap()),
+                ent_size: self.convert(sh[56..=63].try_into().unwrap())
+            }).collect();
+
+        Ok(headers)
+    }
+
     pub fn parse(&mut self, data: Vec<u8>) -> Result<&Self, ParseError> {
-        self.headers = self.parse_headers(data)?;
+        self.headers = self.parse_headers(&data)?;
+        self.section_headers = self.parse_header_sections(&data)?;
+
         Ok(self)
     }
 }
