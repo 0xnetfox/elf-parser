@@ -6,10 +6,45 @@ pub const PF_EXEC: u8 = 0x1;
 pub const PF_WRITE: u8 = 0x2;
 pub const PF_READ: u8 = 0x4;
 
+#[repr(u32)]
+#[derive(Debug)]
+pub enum PType {
+    PtNull = 0,
+    PtLoad = 1,
+    PtDynamic = 2,
+    PtInterp = 3,
+    PtNote = 4,
+    PtShlib = 5,
+    PtPhdr = 6,
+    PtTls = 7,
+    PtLoos = 8,
+    PtHios = 9,
+    PtLoProc = 10,
+    PtHiProc = 11,
+}
+
+impl TryFrom<u32> for PType {
+    type Error = ();
+
+    fn try_from(v: u32) -> Result<Self, Self::Error> {
+        if v < 8 {
+            return Ok(unsafe { std::mem::transmute::<u32, PType>(v) });
+        }
+
+        Ok(match v {
+            0x60000000..0x6fffffff => PType::PtLoos,
+            0x6fffffff..0x70000000 => PType::PtHios,
+            0x70000000..0x7fffffff => PType::PtLoProc,
+            0x7fffffff..=0xffffffff => PType::PtHiProc,
+            _ => unreachable!(),
+        })
+    }
+}
+
 #[derive(Debug)]
 pub struct Elf64PHdr {
     /// Segment type
-    pub p_type: u32,
+    pub p_type: PType,
     /// Flags relevant to the segment
     pub flags: u32,
     /// Offset from the beginning of the file to the first byte of the segment
@@ -41,7 +76,9 @@ impl Elf64PHdr {
             .chunks(siz)
             .take(nth)
             .map(|sh| Elf64PHdr {
-                p_type: convert(sh[0..=3].try_into().unwrap(), headers.ident.data),
+                p_type: convert::<u32, 4>(sh[0..=3].try_into().unwrap(), headers.ident.data)
+                    .try_into()
+                    .unwrap(),
                 flags: convert(sh[4..=7].try_into().unwrap(), headers.ident.data),
                 offset: convert(sh[8..=15].try_into().unwrap(), headers.ident.data),
                 vaddr: convert(sh[16..=23].try_into().unwrap(), headers.ident.data),

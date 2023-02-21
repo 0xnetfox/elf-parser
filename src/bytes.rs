@@ -2,7 +2,7 @@ use crate::elf::ehdr::ElfHData;
 
 #[repr(C)]
 #[derive(Default, Copy, Clone)]
-pub struct Address(u64);
+pub struct Address(pub u64);
 
 impl std::fmt::Debug for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
