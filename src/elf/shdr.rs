@@ -3,6 +3,35 @@ use crate::{Address, convert, Elf64Hdr, ParseError};
 /// Indicates the lower bound of the range of reserved indices
 pub const SHN_LORESERVE: u16 = 0xff00;
 
+/// Indicates sections that store string tables
+pub const SHT_STRTAB: u32    = 0x3;
+
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
+pub enum StringTableType {
+    /// String Table
+    StrTab,
+    /// Section Header String Table
+    ShStrTab,
+    /// Dynamic Symbols String Table
+    /// TODO: doesn't parse DynStr sections yet
+    #[allow(dead_code)]
+    DynSym,
+    #[default]
+    Other,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct StringTable {
+    /// Offset to the first byte of the table
+    pub offset:     u64,
+    /// Size of the table
+    pub size:       u64,
+    /// Vector of bytes that conform the table
+    pub table:      Vec<u8>,
+    /// Type of string table
+    pub sh_type:    StringTableType
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Copy, Clone)]
 pub struct Elf64SHdr {
@@ -39,6 +68,28 @@ impl Elf64SHdr {
     #[allow(dead_code)]
     pub fn has_align_constraints(&self) -> bool {
         self.addr_align != 0 && self.addr_align != 1
+    }
+
+    pub fn parse_str_table(data: &[u8], section_header: &Elf64SHdr, is_header_table: bool) -> Result<StringTable, ParseError> {
+        let off = section_header.offset as usize;
+        let siz = section_header.size as usize;
+
+        assert_eq!(section_header.s_type, SHT_STRTAB);
+
+        let table: Vec<u8> = data[off..off + siz].try_into().unwrap();
+
+        assert_eq!(table.len(), siz);
+        assert_eq!(*table.first().unwrap(), 0u8);
+        assert_eq!(*table.last().unwrap(), 0u8);
+
+        let sh_type = if is_header_table { StringTableType::ShStrTab } else { StringTableType::StrTab };
+
+        Ok(StringTable {
+            offset: section_header.offset,
+            size: section_header.size,
+            table,
+            sh_type,
+        })
     }
 
     pub fn parse(data: &[u8], headers: &Elf64Hdr) -> Result<Vec<Self>, ParseError> {
