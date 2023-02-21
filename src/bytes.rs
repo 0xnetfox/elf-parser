@@ -1,3 +1,5 @@
+use crate::ElfHData;
+
 #[repr(C)]
 #[derive(Default, Copy, Clone)]
 pub struct Address(u64);
@@ -5,6 +7,14 @@ pub struct Address(u64);
 impl std::fmt::Debug for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Address({:#08x})", self.0)
+    }
+}
+
+pub fn convert<T: GenericBytes<N>, const N: usize>(bytes: [u8; N], endianness: ElfHData) -> T {
+    if endianness == ElfHData::ElfData2Msb {
+        T::from_be_bytes(bytes)
+    } else {
+        T::from_le_bytes(bytes)
     }
 }
 
