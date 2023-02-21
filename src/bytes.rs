@@ -47,3 +47,12 @@ impl GenericBytes<8> for Address {
         Address(u64::from_be_bytes(bytes))
     }
 }
+
+pub fn str_from_u8(src: &[u8]) -> Result<String, ()> {
+    let nul_range_end = src.iter()
+        .position(|&c| c == b'\0')
+        .unwrap_or(src.len());
+
+    Ok(String::from_utf8(src[0..nul_range_end].to_vec()).unwrap())
+}
+
