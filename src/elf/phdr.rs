@@ -7,7 +7,7 @@ pub const PF_WRITE: u8 = 0x2;
 pub const PF_READ: u8 = 0x4;
 
 #[repr(u32)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum PType {
     PtNull = 0,
     PtLoad = 1,
@@ -64,6 +64,8 @@ pub struct Elf64PHdr {
     /// the file. Values 0 and 1 mean no alignment is required. Otherwise, p_align should
     /// be a positive, integral power of 2, and p_vaddr should equal p_offset modulo p_align.
     pub align: u64,
+    /// The section data that should be loaded into the process
+    pub section: Vec<u8>,
 }
 
 impl Elf64PHdr {
@@ -75,17 +77,37 @@ impl Elf64PHdr {
         let headers: Vec<Elf64PHdr> = data[off..]
             .chunks(siz)
             .take(nth)
-            .map(|sh| Elf64PHdr {
-                p_type: convert::<u32, 4>(sh[0..=3].try_into().unwrap(), headers.ident.data)
+            .map(|sh| {
+                let p_type = convert::<u32, 4>(sh[0..=3].try_into().unwrap(), headers.ident.data)
                     .try_into()
-                    .unwrap(),
-                flags: convert(sh[4..=7].try_into().unwrap(), headers.ident.data),
-                offset: convert(sh[8..=15].try_into().unwrap(), headers.ident.data),
-                vaddr: convert(sh[16..=23].try_into().unwrap(), headers.ident.data),
-                paddr: convert(sh[24..=31].try_into().unwrap(), headers.ident.data),
-                filesz: convert(sh[32..=39].try_into().unwrap(), headers.ident.data),
-                memsz: convert(sh[40..=47].try_into().unwrap(), headers.ident.data),
-                align: convert(sh[48..=55].try_into().unwrap(), headers.ident.data),
+                    .unwrap();
+                let filesz = convert::<u64, 8>(sh[32..=39].try_into().unwrap(), headers.ident.data);
+                let memsz = convert::<u64, 8>(sh[40..=47].try_into().unwrap(), headers.ident.data);
+                let offset = convert::<u64, 8>(sh[8..=15].try_into().unwrap(), headers.ident.data);
+
+                // initialize the data vector with len `memsz`, as that's the total length that
+                // it should occupy on the process memory
+                let mut bytes = vec![0u8; memsz as usize];
+                if p_type == PType::PtLoad {
+                    if filesz > memsz {
+                        panic!();
+                    }
+
+                    let section = &data[offset as usize..(offset + filesz) as usize];
+                    bytes[0..filesz as usize].copy_from_slice(section);
+                }
+
+                Elf64PHdr {
+                    p_type,
+                    flags: convert(sh[4..=7].try_into().unwrap(), headers.ident.data),
+                    offset,
+                    vaddr: convert(sh[16..=23].try_into().unwrap(), headers.ident.data),
+                    paddr: convert(sh[24..=31].try_into().unwrap(), headers.ident.data),
+                    filesz,
+                    memsz,
+                    align: convert(sh[48..=55].try_into().unwrap(), headers.ident.data),
+                    section: bytes,
+                }
             })
             .collect();
 
